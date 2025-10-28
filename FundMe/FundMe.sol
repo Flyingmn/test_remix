@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/utils/Strings.sol"; // 或直接使用内置 strings
 
 
@@ -26,21 +26,30 @@ contract FundMe{
     uint256 public deployTime;
 
     //限制时间
-    uint256 internal  limit_time = 3;
+    uint256 internal  limit_time;
+
+    //美元汇率
+    int256 public price;
 
     AggregatorV3Interface private priceFeed;
 
     constructor(uint256 _limit_time){
         owner = msg.sender;
-        priceFeed = AggregatorV3Interface(0x627D9d6c29D2C2B3DeAAb40263af2a474F49b130);
+        priceFeed = AggregatorV3Interface(0x694AA1769357215DE4FAC081bf1f309aDC325306);
         deployTime = block.timestamp;
         limit_time = _limit_time;
+        price = getLatestPrice();
     }
 
     function fund() external payable{
         require(transTUsd(msg.value) >= minimumUSD, string(abi.encodePacked("Please provide a minimum donation of $", (minimumUSD / 10**18).toString())));
 
-        funders[msg.sender] = uint256(msg.value);
+        if (funders[msg.sender] > 0) {
+            funders[msg.sender] += uint256(msg.value);    
+        } else {
+            funders[msg.sender] = uint256(msg.value);
+        }
+        
     }
 
     function getLatestPrice() public view returns (int256) {
@@ -50,7 +59,7 @@ contract FundMe{
 
     //将筹资转为美元
     function transTUsd(uint256 _fund) public view returns(uint256){
-        return _fund * uint256(getLatestPrice());
+        return _fund * uint256(price) / 10 ** 8;
     }
 
     //提现
