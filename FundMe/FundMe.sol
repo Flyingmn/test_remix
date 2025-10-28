@@ -19,11 +19,22 @@ contract FundMe{
     mapping(address => uint256) public funders;
     uint256 public minimumUSD = 50 * 10 ** 18;
 
+    //目标募集资金
+    uint256 constant TARGET = 500 * 10 ** 18;
+
+    //部署时间
+    uint256 public deployTime;
+
+    //限制时间
+    uint256 internal  limit_time = 3;
+
     AggregatorV3Interface private priceFeed;
 
-    constructor(){
+    constructor(uint256 _limit_time){
         owner = msg.sender;
-         priceFeed = AggregatorV3Interface(0x627D9d6c29D2C2B3DeAAb40263af2a474F49b130);
+        priceFeed = AggregatorV3Interface(0x627D9d6c29D2C2B3DeAAb40263af2a474F49b130);
+        deployTime = block.timestamp;
+        limit_time = _limit_time;
     }
 
     function fund() external payable{
@@ -40,5 +51,48 @@ contract FundMe{
     //将筹资转为美元
     function transTUsd(uint256 _fund) public view returns(uint256){
         return _fund * uint256(getLatestPrice());
+    }
+
+    //提现
+    function getFund() external onlyOwner fundGoalReached outLimitTime{
+        (bool success, ) = owner.call{value: address(this).balance}("");
+        require(success, "Transfer failed.");
+    }
+    //筹资不达标，获取自己的筹资
+    function reFund() external onlyFunder fundGoalNotReached outLimitTime{
+        (bool success, ) = msg.sender.call{value: funders[msg.sender]}("");
+        require(success, "Transfer failed.");
+        funders[msg.sender] = 0;
+    }
+    
+    //修改发起人
+    function changeOwner(address _newOwner) external onlyOwner{
+        owner = _newOwner;
+    }
+
+    //只允许ower
+    modifier onlyOwner(){
+        require(msg.sender == owner, "Only owner can call this function!");
+        _;
+    }
+    //只允许funder
+    modifier onlyFunder(){
+        require(funders[msg.sender] > 0, "Only funder can call this function!");
+        _;
+    }
+    //筹资达标
+    modifier fundGoalReached(){
+        require(transTUsd(address(this).balance) >= TARGET, "Fund goal has not been reached");
+        _;
+    }
+    //筹资不达标
+    modifier fundGoalNotReached(){
+        require(transTUsd(address(this).balance) < TARGET, "Fund goal has been reached");
+        _;
+    }
+    //在限制期外
+    modifier outLimitTime(){
+        require(block.timestamp >= (deployTime + limit_time), "Now is in limit time");
+        _;
     }
 }
