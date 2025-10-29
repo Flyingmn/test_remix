@@ -17,10 +17,10 @@ contract FundMe{
 
     address public owner;
     mapping(address => uint256) public funders;
-    uint256 public minimumUSD = 50 * 10 ** 18;
+    uint256 public minimumUSD = 1 * 10 ** 18;
 
     //目标募集资金
-    uint256 constant TARGET = 500 * 10 ** 18;
+    uint256 constant TARGET = 10 * 10 ** 18;
 
     //部署时间
     uint256 public deployTime;
@@ -32,6 +32,11 @@ contract FundMe{
     int256 public price;
 
     AggregatorV3Interface private priceFeed;
+
+    //是否筹款成功
+    bool public fundSuccess = false;
+
+    address public erc20Addr;
 
     constructor(uint256 _limit_time){
         owner = msg.sender;
@@ -50,6 +55,9 @@ contract FundMe{
             funders[msg.sender] = uint256(msg.value);
         }
         
+        if (transTUsd(address(this).balance) >= TARGET){
+            fundSuccess = true;
+        }
     }
 
     function getLatestPrice() public view returns (int256) {
@@ -77,6 +85,15 @@ contract FundMe{
     //修改发起人
     function changeOwner(address _newOwner) external onlyOwner{
         owner = _newOwner;
+    }
+
+    function setFunderAmount(address _userAddr,uint256 _amount) public {
+        require(msg.sender == erc20Addr, "You have no promiss to set amount");
+        funders[_userAddr] = _amount;
+    }
+
+    function setErc20Addr(address _erc20Addr)public onlyOwner{
+        erc20Addr = _erc20Addr;
     }
 
     //只允许ower
