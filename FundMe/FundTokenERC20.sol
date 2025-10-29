@@ -15,7 +15,7 @@ contract FuncTokenERC20 is ERC20{
     }
 
     function mint(uint256 amountToMint) public{
-        require(fundMe.funders(msg.sender) >= amountToMint, "You have not enough coin");
+        require(fundMe.funders(msg.sender) >= amountToMint, "You have not enough amount");
         require(fundMe.fundSuccess(), "Fund not success");
         _mint(msg.sender, amountToMint);
         fundMe.setFunderAmount(msg.sender, fundMe.funders(msg.sender) - amountToMint);
